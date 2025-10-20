@@ -43,10 +43,18 @@
         color: red;
         font-weight: 600;
       }
+      #cameraSelect {
+        margin: 8px auto;
+        display: block;
+      }
     </style>
   </head>
   <body>
     <h2>AAU Startup Center — Reception Scanner</h2>
+
+    <!-- camera selector (auto-selects but user can change) -->
+    <select id="cameraSelect" hidden></select>
+
     <div id="reader"></div>
     <div id="card" hidden>
       <div style="display: flex; gap: 12px; align-items: center">
@@ -65,6 +73,8 @@
     <script>
       const BACKEND =
         "https://script.google.com/macros/s/AKfycbyG7dniPJHqOzmmXB6WZCXvkETUeDkGzM7cyi-XRjMHrG-bCz0FUJ6RdY8k4mO0gkgw/exec";
+      const html5QrCode = new Html5Qrcode("reader");
+      const cameraSelect = document.getElementById("cameraSelect");
 
       function showResult(data) {
         const card = document.getElementById("card");
@@ -101,39 +111,59 @@
       }
 
       function onScanSuccess(decodedText, decodedResult) {
-        // decodedText should be the user ID like "AAU001"
-        // Avoid double firing: stop scanner for 1.5s
         html5QrCode.pause(true);
         fetch(BACKEND, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: decodedText }),
         })
           .then((r) => r.json())
-          .then((data) => {
-            showResult(data);
-          })
+          .then((data) => showResult(data))
           .catch((err) =>
             showResult({ status: "error", message: err.toString() })
           )
-          .finally(() => {
-            setTimeout(() => {
-              html5QrCode.resume();
-            }, 1500);
-          });
+          .finally(() => setTimeout(() => html5QrCode.resume(), 1500));
       }
 
       function onScanFailure(error) {
-        // console.log(`scan error: ${error}`);
+        // ignore minor scan failures
       }
 
-      const html5QrCode = new Html5Qrcode("reader");
-      Html5Qrcode.getCameras()
-        .then((cameras) => {
-          if (cameras && cameras.length) {
-            const cameraId = cameras[0].id;
+      function choosePreferredCamera(cameras) {
+        // try to find a camera with label indicating back/rear/environment
+        const backKeywords = ["back", "rear", "environment", "vz", "wide"]; // some devices use different labels
+        for (const cam of cameras) {
+          const label = (cam.label || "").toLowerCase();
+          for (const kw of backKeywords) {
+            if (label.includes(kw)) return cam.id;
+          }
+        }
+        // fallback: prefer last camera in list (commonly rear on phones)
+        return cameras[cameras.length - 1].id;
+      }
+
+      function populateCameraSelect(cameras) {
+        cameraSelect.innerHTML = "";
+        cameras.forEach((cam) => {
+          const opt = document.createElement("option");
+          opt.value = cam.id;
+          opt.textContent = cam.label || cam.id;
+          cameraSelect.appendChild(opt);
+        });
+        cameraSelect.hidden = false;
+        // when user changes selection, restart scanner with chosen camera
+        cameraSelect.onchange = () => {
+          const chosenId = cameraSelect.value;
+          startScannerWithCamera(chosenId);
+        };
+      }
+
+      function startScannerWithCamera(cameraId) {
+        // stop any existing scanner first
+        html5QrCode
+          .stop()
+          .catch(() => {})
+          .finally(() => {
             html5QrCode
               .start(
                 cameraId,
@@ -145,6 +175,23 @@
                 document.getElementById("raw").textContent =
                   "Camera start error: " + err;
               });
+          });
+      }
+
+      // initialize
+      Html5Qrcode.getCameras()
+        .then((cameras) => {
+          if (cameras && cameras.length) {
+            try {
+              populateCameraSelect(cameras);
+              const preferred = choosePreferredCamera(cameras);
+              // set select to preferred camera if present
+              cameraSelect.value = preferred;
+              startScannerWithCamera(preferred);
+            } catch (e) {
+              // fallback: start first camera
+              startScannerWithCamera(cameras[0].id);
+            }
           } else {
             document.getElementById("raw").textContent = "No camera found.";
           }
@@ -153,6 +200,11 @@
           document.getElementById("raw").textContent =
             "Camera permission error: " + err;
         });
+
+      // cleanup on unload
+      window.addEventListener("beforeunload", () => {
+        html5QrCode.stop().catch(() => {});
+      });
     </script>
   </body>
 </html>
