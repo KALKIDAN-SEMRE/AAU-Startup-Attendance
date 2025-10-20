@@ -1,117 +1,165 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <meta charset="utf-8" />
-  <title>AAU Attendance Scanner</title>
-  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <style>
-    body { font-family: Arial, sans-serif; text-align:center; padding:18px; }
-    #reader { width:320px; margin: 12px auto; }
-    #card { display:inline-block; text-align:left; padding:12px; border-radius:8px; box-shadow:0 2px 8px rgba(0,0,0,0.12); min-width:320px; }
-    img.photo { width:96px; height:96px; object-fit:cover; border-radius:6px; }
-    .line { margin-top:8px; font-size:16px; }
-    .success { color: green; font-weight:600; }
-    .error { color: red; font-weight:600; }
-  </style>
-</head>
-<body>
-  <h2>AAU Startup Center — Reception Scanner</h2>
-  <div id="reader"></div>
-  <div id="card" hidden>
-    <div style="display:flex; gap:12px; align-items:center;">
-      <img id="photo" class="photo" src="">
-      <div>
-        <div id="name" style="font-size:18px; font-weight:700"></div>
-        <div id="id" style="color:#555"></div>
+  <head>
+    <meta charset="utf-8" />
+    <title>AAU Attendance Scanner</title>
+    <script
+      src="https://unpkg.com/html5-qrcode"
+      type="text/javascript"
+    ></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        padding: 18px;
+      }
+      #reader {
+        width: 320px;
+        margin: 12px auto;
+      }
+      #card {
+        display: inline-block;
+        text-align: left;
+        padding: 12px;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+        min-width: 320px;
+      }
+      img.photo {
+        width: 96px;
+        height: 96px;
+        object-fit: cover;
+        border-radius: 6px;
+      }
+      .line {
+        margin-top: 8px;
+        font-size: 16px;
+      }
+      .success {
+        color: green;
+        font-weight: 600;
+      }
+      .error {
+        color: red;
+        font-weight: 600;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>AAU Startup Center — Reception Scanner</h2>
+    <div id="reader"></div>
+    <div id="card" hidden>
+      <div style="display: flex; gap: 12px; align-items: center">
+        <img id="photo" class="photo" src="" />
+        <div>
+          <div id="name" style="font-size: 18px; font-weight: 700"></div>
+          <div id="id" style="color: #555"></div>
+        </div>
       </div>
+      <div class="line" id="action"></div>
+      <div class="line" id="time"></div>
+      <div class="line" id="note" style="color: #777"></div>
     </div>
-    <div class="line" id="action"></div>
-    <div class="line" id="time"></div>
-    <div class="line" id="note" style="color:#777"></div>
-  </div>
-  <div id="raw" style="margin-top:10px;color:#444"></div>
+    <div id="raw" style="margin-top: 10px; color: #444"></div>
 
-  <script>
-    const BACKEND = "YOUR_APPS_SCRIPT_WEBAPP_URL"; // <-- replace here
+    <script>
+      const BACKEND =
+        "https://script.google.com/macros/s/AKfycbxJJ13NVfDjDriWDbHW1r8xOT5fCujQxOuAeIkRuk6sEfXx6IyBdjZPlIk1Mjjhn-Wj/exec";
 
-    function showResult(data) {
-      const card = document.getElementById("card");
-      const nameEl = document.getElementById("name");
-      const idEl = document.getElementById("id");
-      const photo = document.getElementById("photo");
-      const action = document.getElementById("action");
-      const time = document.getElementById("time");
-      const note = document.getElementById("note");
-      const raw = document.getElementById("raw");
+      function showResult(data) {
+        const card = document.getElementById("card");
+        const nameEl = document.getElementById("name");
+        const idEl = document.getElementById("id");
+        const photo = document.getElementById("photo");
+        const action = document.getElementById("action");
+        const time = document.getElementById("time");
+        const note = document.getElementById("note");
+        const raw = document.getElementById("raw");
 
-      if (data.status === "success") {
-        card.hidden = false;
-        nameEl.textContent = data.name || "Unknown";
-        idEl.textContent = data.id || "";
-        photo.src = data.photo || "https://via.placeholder.com/96?text=No+Photo";
-        action.textContent = (data.action === "checkin" ? "Checked In" : "Checked Out");
-        action.className = "success";
-        time.textContent = `At ${data.time} — ${data.date}`;
-        note.textContent = "";
-      } else {
-        card.hidden = false;
-        nameEl.textContent = "Error";
-        idEl.textContent = "";
-        photo.src = "https://via.placeholder.com/96?text=Error";
-        action.textContent = data.message || "Unknown error";
-        action.className = "error";
-        time.textContent = "";
-        note.textContent = "";
+        if (data.status === "success") {
+          card.hidden = false;
+          nameEl.textContent = data.name || "Unknown";
+          idEl.textContent = data.id || "";
+          photo.src =
+            data.photo || "https://via.placeholder.com/96?text=No+Photo";
+          action.textContent =
+            data.action === "checkin" ? "Checked In" : "Checked Out";
+          action.className = "success";
+          time.textContent = `At ${data.time} — ${data.date}`;
+          note.textContent = "";
+        } else {
+          card.hidden = false;
+          nameEl.textContent = "Error";
+          idEl.textContent = "";
+          photo.src = "https://via.placeholder.com/96?text=Error";
+          action.textContent = data.message || "Unknown error";
+          action.className = "error";
+          time.textContent = "";
+          note.textContent = "";
+        }
+        raw.textContent = JSON.stringify(data);
       }
-      raw.textContent = JSON.stringify(data);
-    }
 
-    function onScanSuccess(decodedText, decodedResult) {
-      // decodedText should be the user ID like "AAU001"
-      // Avoid double firing: stop scanner for 1.5s
-      html5QrCode.pause(true);
-      fetch(BACKEND, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ id: decodedText })
-      })
-      .then(r => r.json())
-      .then(data => {
-        showResult(data);
-      })
-      .catch(err => showResult({ status: "error", message: err.toString() }))
-      .finally(() => {
-        setTimeout(() => { html5QrCode.resume(); }, 1500);
-      });
-    }
+      function onScanSuccess(decodedText, decodedResult) {
+        // decodedText should be the user ID like "AAU001"
+        // Avoid double firing: stop scanner for 1.5s
+        html5QrCode.pause(true);
+        fetch(BACKEND, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: decodedText }),
+        })
+          .then((r) => r.json())
+          .then((data) => {
+            showResult(data);
+          })
+          .catch((err) =>
+            showResult({ status: "error", message: err.toString() })
+          )
+          .finally(() => {
+            setTimeout(() => {
+              html5QrCode.resume();
+            }, 1500);
+          });
+      }
 
-    function onScanFailure(error) {
-      // console.log(`scan error: ${error}`);
-    }
+      function onScanFailure(error) {
+        // console.log(`scan error: ${error}`);
+      }
 
-    const html5QrCode = new Html5Qrcode("reader");
-    Html5Qrcode.getCameras().then(cameras => {
-      if (cameras && cameras.length) {
-        // Try to find the back camera. If not available, use the first available camera.
-        const backCamera = cameras.find(camera => camera.label.toLowerCase().includes('back') || camera.label.toLowerCase().includes('environment'));
-        const cameraId = backCamera ? backCamera.id : cameras[0].id; // Use back camera if found, otherwise the first camera
+      const html5QrCode = new Html5Qrcode("reader");
+      Html5Qrcode.getCameras()
+        .then((cameras) => {
+          if (cameras && cameras.length) {
+            // Try to find the back camera. If not available, use the first available camera.
+            const backCamera = cameras.find(
+              (camera) =>
+                camera.label.toLowerCase().includes("back") ||
+                camera.label.toLowerCase().includes("environment")
+            );
+            const cameraId = backCamera ? backCamera.id : cameras[0].id; // Use back camera if found, otherwise the first camera
 
-        html5QrCode.start(
-          cameraId,
-          { fps: 10, qrbox: 250 },
-          onScanSuccess,
-          onScanFailure
-        ).catch(err => {
-          document.getElementById("raw").textContent = "Camera start error: " + err;
+            html5QrCode
+              .start(
+                cameraId,
+                { fps: 10, qrbox: 250 },
+                onScanSuccess,
+                onScanFailure
+              )
+              .catch((err) => {
+                document.getElementById("raw").textContent =
+                  "Camera start error: " + err;
+              });
+          } else {
+            document.getElementById("raw").textContent = "No camera found.";
+          }
+        })
+        .catch((err) => {
+          document.getElementById("raw").textContent =
+            "Camera permission error: " + err;
         });
-      } else {
-        document.getElementById("raw").textContent = "No camera found.";
-      }
-    }).catch(err => {
-      document.getElementById("raw").textContent = "Camera permission error: " + err;
-    });
-  </script>
-</body>
+    </script>
+  </body>
 </html>
